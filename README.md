@@ -14,7 +14,7 @@ The workflow demonstrates:
 
 The synthetic dataset do not contain any confidential water utility data. They are provided only to demonstrate the structure and computational workflow used. Numerical results are produced from synthetic data and are intended only to demonstrate the workflow and do not represent real-world model performance.
 
-## Running versus inspecting the workflow
+## Using this repository
 
 To fully reproduce the synthetic workflow, a Python environment with the required libraries is needed. The recommended installation method is provided through `environment.yml`.
 
