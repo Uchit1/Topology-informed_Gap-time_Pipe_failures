@@ -1,0 +1,10 @@
+numpy
+pandas
+scipy
+scikit-learn
+matplotlib
+geopandas
+shapely
+networkx
+gensim
+scikit-survival

@@ -1,0 +1,17 @@
+name: rsf_synthetic
+
+channels:
+  - conda-forge
+
+dependencies:
+  - python=3.11
+  - numpy
+  - pandas
+  - scipy
+  - scikit-learn
+  - matplotlib
+  - geopandas
+  - shapely
+  - networkx
+  - gensim
+  - scikit-survival
