@@ -77,6 +77,18 @@ GWT
 
 The GIS file `Net3.gpkg` contains the pipe geometries used for graph construction. Some compatibility columns are retained for the graph-feature workflow, including `EntityID`, `ConstructionYear`, `InnerDiameter`, and `PipeMaterial`.
 
+## Net3 and EPANET attribution
+
+This repository uses the EPANET Example Network 3 (`Net3.inp`) as the basis for the synthetic demonstration dataset. EPANET was originally developed by the U.S. Environmental Protection Agency (USEPA), and the EPANET project is maintained by the OpenWaterAnalytics community.
+
+The `Net3.inp` file used in this repository was obtained from the OpenWaterAnalytics EPANET GitHub repository:
+
+```text
+https://github.com/OpenWaterAnalytics/EPANET
+```
+
+Users who reuse this example should cite EPANET, the OpenWaterAnalytics EPANET repository, and the Net3 example network.
+
 ## Software requirements
 
 The workflow can be run from a standard terminal, Anaconda Prompt, VS Code terminal, PyCharm terminal, or any Python environment. Spyder is not required.
