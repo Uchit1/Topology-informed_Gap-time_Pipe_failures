@@ -119,6 +119,7 @@ NUMERIC_BASE_FEATURES = [
     "Air Release Valve",
     "age_start",
     "num_prev_failures",
+    "time_since_last_failure",
 ]
 
 GRAPH_SCALARS = [
@@ -529,10 +530,9 @@ def tune_rsf_hyperparameters_harrell_c(
                     rsf__sample_weight=w_tr,
                 )
 
-                val_risk = cumulative_hazard_risk_scores(
+                val_risk = rsf_risk_scores(
                     pipe=pipe,
                     X_eval=X_val,
-                    observed_times=y_val_time,
                 )
 
                 c_val = harrell_c_index(
@@ -607,48 +607,16 @@ def tune_rsf_hyperparameters_harrell_c(
 
 
 
-def cumulative_hazard_risk_scores(
+def rsf_risk_scores(
     pipe: Pipeline,
     X_eval: pd.DataFrame,
-    observed_times: np.ndarray,
 ) -> np.ndarray:
     """
-    Risk score for Harrell C-index.
+    Standard time-independent RSF risk score for concordance evaluation.
+    Higher values indicate higher predicted risk.
 
-    The score is the predicted cumulative hazard evaluated at each row's
-    observed duration. Higher score means higher predicted failure risk.
     """
-    import bisect
-
-    preprocessor = pipe.named_steps["preproc"]
-    rsf = pipe.named_steps["rsf"]
-
-    X_transformed = preprocessor.transform(X_eval)
-    chfs = rsf.predict_cumulative_hazard_function(
-        X_transformed,
-        return_array=False,
-    )
-
-    def hazard_at_time(chf, t):
-        times = chf.x
-        values = chf.y
-
-        idx = bisect.bisect_right(times, float(t)) - 1
-
-        if idx < 0:
-            return 0.0
-
-        idx = min(idx, len(values) - 1)
-
-        return float(values[idx])
-
-    return np.asarray(
-        [
-            hazard_at_time(chf, t)
-            for chf, t in zip(chfs, observed_times)
-        ],
-        dtype=float,
-    )
+    return np.asarray(pipe.predict(X_eval), dtype=float)
 
 
 def failure_probability_at_horizon(
@@ -761,10 +729,9 @@ def grouped_permutation_importance_harrell_c(
     """
     rng = np.random.default_rng(random_state)
 
-    base_risk = cumulative_hazard_risk_scores(
+    base_risk = rsf_risk_scores(
         pipe=pipe,
         X_eval=X_eval,
-        observed_times=y_time,
     )
 
     base_c = harrell_c_index(
@@ -781,10 +748,9 @@ def grouped_permutation_importance_harrell_c(
     records = []
 
     def score_after_permutation(X_perm: pd.DataFrame) -> float:
-        perm_risk = cumulative_hazard_risk_scores(
+        perm_risk = rsf_risk_scores(
             pipe=pipe,
             X_eval=X_perm,
-            observed_times=y_time,
         )
 
         return harrell_c_index(
@@ -1054,10 +1020,9 @@ def main() -> None:
     pipe.fit(X_train, y_train, rsf__sample_weight=weights)
 
     print("Predicting evaluation risk...")
-    risk_scores = cumulative_hazard_risk_scores(
+    risk_scores = rsf_risk_scores(
         pipe=pipe,
         X_eval=X_eval,
-        observed_times=y_eval_time,
     )
 
     failure_prob_5yr = failure_probability_at_horizon(
@@ -1095,7 +1060,7 @@ def main() -> None:
         ]
     ].copy()
 
-    predictions["risk_score_cumhaz"] = risk_scores
+    predictions["rsf_risk_score"] = risk_scores
     predictions["failure_prob_5yr"] = failure_prob_5yr
     predictions["rank_by_failure_prob"] = predictions[
         "failure_prob_5yr"

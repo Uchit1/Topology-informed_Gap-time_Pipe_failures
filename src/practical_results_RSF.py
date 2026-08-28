@@ -115,6 +115,7 @@ NUMERIC_BASE_FEATURES = [
     "Air Release Valve",
     "age_start",
     "num_prev_failures",
+    "time_since_last_failure",
 ]
 
 GRAPH_SCALARS = [
@@ -260,41 +261,15 @@ def rsf_predict_survival_functions(pipe: Pipeline, X_df: pd.DataFrame):
     )
 
 
-def cumulative_hazard_risk_scores(
+def rsf_risk_scores(
     pipe: Pipeline,
     X_eval: pd.DataFrame,
-    observed_times: np.ndarray,
 ) -> np.ndarray:
-    preprocessor = pipe.named_steps["preproc"]
-    rsf = pipe.named_steps["rsf"]
-
-    X_transformed = preprocessor.transform(X_eval)
-
-    chfs = rsf.predict_cumulative_hazard_function(
-        X_transformed,
-        return_array=False,
-    )
-
-    def hazard_at_time(chf, t):
-        times = chf.x
-        values = chf.y
-
-        idx = bisect.bisect_right(times, float(t)) - 1
-
-        if idx < 0:
-            return 0.0
-
-        idx = min(idx, len(values) - 1)
-
-        return float(values[idx])
-
-    return np.asarray(
-        [
-            hazard_at_time(chf, t)
-            for chf, t in zip(chfs, observed_times)
-        ],
-        dtype=float,
-    )
+    """
+    RSF risk score for concordance evaluation.
+    Higher values indicate higher predicted risk.
+    """
+    return np.asarray(pipe.predict(X_eval), dtype=float)
 
 
 def failure_probability_at_horizon(
@@ -532,10 +507,9 @@ def tune_rsf_hyperparameters_harrell_c(
                     rsf__sample_weight=w_tr,
                 )
 
-                val_risk = cumulative_hazard_risk_scores(
+                val_risk = rsf_risk_scores(
                     pipe=pipe,
                     X_eval=X_val,
-                    observed_times=y_val_time,
                 )
 
                 c_val = harrell_c_index(
@@ -1160,10 +1134,9 @@ def main() -> None:
     pipe.fit(X_train, y_train, rsf__sample_weight=weights)
 
     print("Predicting temporal 2020-2024 evaluation window...")
-    risk_scores = cumulative_hazard_risk_scores(
+    risk_scores = rsf_risk_scores(
         pipe=pipe,
         X_eval=X_eval,
-        observed_times=y_eval_time,
     )
 
     failure_prob_5yr = failure_probability_at_horizon(
@@ -1192,7 +1165,7 @@ def main() -> None:
     )
 
     df_out = df_eval.copy()
-    df_out["risk_score_cumhaz"] = risk_scores
+    df_out["rsf_risk_score"] = risk_scores
     df_out["failure_prob_5yr"] = failure_prob_5yr
     df_out["rank_by_failure_prob"] = (
         df_out["failure_prob_5yr"]

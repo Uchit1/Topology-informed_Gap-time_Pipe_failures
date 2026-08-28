@@ -34,6 +34,7 @@ Final RSF-ready output columns:
     Air Release Valve
     age_start
     num_prev_failures
+    time_since_last_failure
     emb_00 ... emb_63
     khop_fail_sum
 """
@@ -312,6 +313,12 @@ def build_training_intervals(
             failure = 1 if pd.notna(val) and int(val) > 0 else 0
 
             if failure:
+                time_since_last_failure = (
+                    prev_year - last_failure_year
+                    if last_failure_year is not None
+                    else prev_year - install_year
+                )
+            
                 out.append(
                     {
                         id_col: pipe_id,
@@ -321,15 +328,23 @@ def build_training_intervals(
                         "event": 1,
                         "age_start": prev_year - install_year,
                         "num_prev_failures": failure_count,
+                        "time_since_last_failure": time_since_last_failure,
                         **{c: row[c] for c in static_cols},
                     }
                 )
-
+            
                 failure_count += 1
                 last_failure_year = y
                 prev_year = y + 1
 
+            
         if prev_year <= end_year:
+            time_since_last_failure = (
+                prev_year - last_failure_year
+                if last_failure_year is not None
+                else prev_year - install_year
+            )
+        
             out.append(
                 {
                     id_col: pipe_id,
@@ -339,6 +354,7 @@ def build_training_intervals(
                     "event": 0,
                     "age_start": prev_year - install_year,
                     "num_prev_failures": failure_count,
+                    "time_since_last_failure": time_since_last_failure,
                     **{c: row[c] for c in static_cols},
                 }
             )
@@ -375,14 +391,16 @@ def build_eval_window(
             continue
 
         failure_count = 0
-
+        last_failure_year = None
+        
         hist_start = max(history_start_year, install_year)
-
+        
         for y in range(hist_start, window_start):
             val = row.get(str(y), 0)
-
+        
             if pd.notna(val) and int(val) > 0:
                 failure_count += 1
+                last_failure_year = y
 
         first_failure = None
 
@@ -403,6 +421,12 @@ def build_eval_window(
         duration = (end_year - window_start) + 1
 
         if duration > 0:
+            time_since_last_failure = (
+                window_start - last_failure_year
+                if last_failure_year is not None
+                else window_start - install_year
+            )
+        
             out.append(
                 {
                     id_col: pipe_id,
@@ -412,6 +436,7 @@ def build_eval_window(
                     "event": event,
                     "age_start": window_start - install_year,
                     "num_prev_failures": failure_count,
+                    "time_since_last_failure": time_since_last_failure,
                     **{c: row[c] for c in static_cols},
                 }
             )
@@ -661,6 +686,7 @@ def make_final_rsf_table(df: pd.DataFrame, id_col: str) -> pd.DataFrame:
         "Air Release Valve",
         "age_start",
         "num_prev_failures",
+        "time_since_last_failure",
     ] + emb_cols + [
         "khop_fail_sum",
     ]
@@ -761,6 +787,7 @@ def main() -> None:
         "Material",
         "age_start",
         "num_prev_failures",
+        "time_since_last_failure",
         "khop_fail_sum",
     ] + emb_cols[:5]
 
