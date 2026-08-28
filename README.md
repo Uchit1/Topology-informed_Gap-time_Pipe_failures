@@ -255,3 +255,10 @@ The code and synthetic demonstration data are provided to reproduce the computat
 ## License
 
 This repository is released under the BSD 3-Clause License. See the `LICENSE` file for details.
+
+## Version history
+
+### Version 1.2
+
+- Corrected RSF risk score.
+- Added time-since-last-failure as a history feature.
